@@ -2,7 +2,7 @@ pipeline{
     agent any 
     parameters {
         string (name : 'DOCKER_CREDENTIALS_ID',
-                defaultValue : '',
+                defaultValue : 'dockerhub',
                 description : 'ID of the docker hub credentials in the jenkins')
         string (name: 'DOCKERHUB_USERNAME'
                 defaultValue: 'pathipatisanjay'
