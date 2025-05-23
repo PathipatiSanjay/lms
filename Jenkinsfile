@@ -1,31 +1,59 @@
-pipeline {
-    agent any
-    environment {
-        // More detail: 
-        // https://jenkins.io/doc/book/pipeline/jenkinsfile/#usernames-and-passwords
-        NEXUS_CRED = credentials('nexus')
-   }
-
+pipeline{
+    agent any 
+    parameters {
+        string (name : 'DOCKER_CREDENTIALS_ID',
+                defaultValue : '',
+                description : 'ID of the docker hub credentials in the jenkins')
+        string (name: 'DOCKERHUB_USERNAME'
+                defaultValue: 'pathipatisanjay'
+                description: 'your docker hub username')
+        string (name: 'IMAGE_NAME',
+                defaultValue:'pathipatisanjay/lms-fe',
+                description: 'Name of the image in docker hub')
+        string (name: 'DOCKER_REGISTRY',
+               defaultValue: 'https://registry.hub.docker.com', // **CORRECTED DEFAULT**
+               description: 'URL of your Docker registry (e.g., https://registry.hub.docker.com)')
+    }
     stages {
-        stage('Build') {
+        stage('Version') {
             steps {
-                echo 'Building..'
-                sh 'cd webapp && npm install && npm run build'
+                script {
+                    def packageJson = readJSON file: 'webapp/package.json'
+                    env.VERSION = packageJson.version
+                    echo "Version from package.json: ${env.VERSION}"
+                }
             }
         }
-        stage('Test') {
+        stage('Build and Push Docker Image') {
             steps {
-                echo 'Testing..'
-                sh 'cd webapp && sudo docker container run --rm -e SONAR_HOST_URL="http://20.172.187.108:9000" -e SONAR_LOGIN="sqp_cae41e62e13793ff17d58483fb6fb82602fe2b48" -v ".:/usr/src" sonarsource/sonar-scanner-cli -Dsonar.projectKey=lms'
+                script {
+                    // Build the Docker image
+                    def dockerImage = docker.build("${params.IMAGE_NAME}:${env.VERSION}", 'webapp')
+                    // Use docker.withRegistry for pushing with the full URL
+                    docker.withRegistry("${params.DOCKER_REGISTRY}", params.DOCKERHUB_CREDENTIALS_ID) {
+                        dockerImage.push("${env.VERSION}") // Push with the specific version tag
+                        dockerImage.push('latest')          // Also push with the 'latest' tag
+                    }
+                }
             }
         }
-        stage('Release') {
+        stage('Deploy') {
             steps {
-                echo 'Release Nexus'
-                sh 'rm -rf *.zip'
-                sh 'cd webapp && zip dist-${BUILD_NUMBER}.zip -r dist'
-                sh 'cd webapp && curl -v -u $Username:$Password --upload-file dist-${BUILD_NUMBER}.zip http://20.172.187.108:8081/repository/lms/'
+                script {
+                    echo "Deploying image ${params.IMAGE_NAME}:${env.VERSION} using port mapping"
+                    // First, stop and remove any existing container with the same name if you intend to restart it.
+                    // This prevents "docker run" from failing if the container already exists.
+                    sh "docker ps -a --filter 'name=lms-frontend-container' --format '{{.ID}}' | xargs -r docker rm -f"
+                    sh "docker run -dt -p 80:80 --name lms-frontend-container ${params.IMAGE_NAME}:${env.VERSION}"
+                }
             }
         }
+    }
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}       
     }
 }
