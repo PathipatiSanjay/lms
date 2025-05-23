@@ -1,16 +1,16 @@
-pipeline{
-    agent any 
+pipeline {
+    agent any
     parameters {
-        string (name : 'DOCKER_CREDENTIALS_ID',
-                defaultValue : 'dockerhub',
-                description : 'ID of the docker hub credentials in the jenkins')
-        string (name: 'DOCKERHUB_USERNAME'
-                defaultValue: 'pathipatisanjay'
-                description: 'your docker hub username')
-        string (name: 'IMAGE_NAME',
-                defaultValue:'pathipatisanjay/lms-fe',
-                description: 'Name of the image in docker hub')
-        string (name: 'DOCKER_REGISTRY',
+        string(name: 'DOCKERHUB_CREDENTIALS_ID',
+               defaultValue: 'dockerhub', // Corrected common default for clarity
+               description: 'ID of the Docker Hub credentials in Jenkins')
+        string(name: 'DOCKERHUB_USERNAME',
+               defaultValue: 'pathipatisanjay',
+               description: 'Your Docker Hub username')
+        string(name: 'IMAGE_NAME',
+               defaultValue: 'pathipatisanjay/lms-frontend',
+               description: 'Name of the Docker image in Docker Hub (e.g., pathipatisanjay/lms-frontend)')
+        string(name: 'DOCKER_REGISTRY', // Parameter for Docker registry URL
                defaultValue: 'https://registry.hub.docker.com', // **CORRECTED DEFAULT**
                description: 'URL of your Docker registry (e.g., https://registry.hub.docker.com)')
     }
@@ -53,7 +53,5 @@ pipeline{
         always {
             cleanWs()
         }
-    }
-}       
     }
 }
